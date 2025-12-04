@@ -131,7 +131,7 @@ export default function HackathonPlanner() {
           </TabsContent>
 
           <TabsContent value="hardware">
-            <HardwareTab hardware={hardware} setHardware={setHardware} />
+            <HardwareTab hardware={hardware} setHardware={setHardware} user={user} />
           </TabsContent>
 
           <TabsContent value="reservations">

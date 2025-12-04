@@ -8,13 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import type { Hardware } from "@/lib/types"
+import { HardwareService } from "@/lib/services/hardware-service"
+import { CurrentUser } from "@stackframe/stack"
 
 interface HardwareTabProps {
   hardware: Hardware[]
   setHardware: (hardware: Hardware[] | ((prev: Hardware[]) => Hardware[])) => void
+  user: CurrentUser
 }
 
-export function HardwareTab({ hardware, setHardware }: HardwareTabProps) {
+export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [quantity, setQuantity] = useState("")
@@ -37,9 +40,19 @@ export function HardwareTab({ hardware, setHardware }: HardwareTabProps) {
     setQuantity("")
   }
 
-  const deleteHardware = (id: string) => {
-    setHardware((prev) => prev.filter((item) => item.id !== id))
-  }
+  const deleteHardware = async (id: string) => {
+    if (!user) return;
+
+    const previousHardware = [...hardware];
+    setHardware((prev) => prev.filter((item) => item.id !== id));
+
+    try {
+      await HardwareService.delete(user, id);
+    } catch (error) {
+      console.error("Delete failed, rolling back:", error);
+      setHardware(previousHardware);
+    }
+  };
 
   const startEdit = (item: Hardware) => {
     setEditingId(item.id)
@@ -50,22 +63,34 @@ export function HardwareTab({ hardware, setHardware }: HardwareTabProps) {
     })
   }
 
-  const saveEdit = (id: string) => {
-    setHardware((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              name: editForm.name,
-              description: editForm.description,
-              quantity: Number.parseInt(editForm.quantity),
-              available: item.available + (Number.parseInt(editForm.quantity) - item.quantity),
-            }
-          : item,
-      ),
-    )
-    setEditingId(null)
-  }
+  const saveEdit = async (id: string) => {
+    if (!user) return;
+
+    const newQuantity = Number.parseInt(editForm.quantity);
+    const oldItem = hardware.find(h => h.id === id);
+
+    if (!oldItem) return;
+
+    const quantityDiff = newQuantity - oldItem.quantity;
+    const newAvailable = oldItem.available + quantityDiff;
+
+    try {
+      const updatedItem = await HardwareService.update(user, id, {
+        name: editForm.name,
+        description: editForm.description,
+        quantity: newQuantity,
+        available: newAvailable,
+      });
+
+      setHardware((prev) =>
+        prev.map((item) => (item.id === id ? updatedItem : item))
+      );
+
+      setEditingId(null);
+    } catch (error) {
+      console.error("Failed to save hardware edit:", error);
+    }
+  };
 
   const cancelEdit = () => {
     setEditingId(null)
