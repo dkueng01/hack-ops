@@ -1,5 +1,5 @@
 "use client"
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Zap, ListTodo, Wallet, Package, CalendarCheck, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TodosTab } from "@/components/todos-tab"
@@ -11,9 +11,26 @@ import { useLocalStorage } from "@/lib/use-local-storage"
 import type { Todo, BudgetEntry, Hardware, Participant, Reservation, Team } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { stackClientApp } from "@/stack/client"
+import { HardwareService } from "@/lib/services/hardware-service"
 
 export default function HackathonPlanner() {
   const user = stackClientApp.useUser({ or: 'redirect' })
+ const [hardware, setHardware] = useState<Hardware[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+
+      const [hardwareData] = await Promise.all([
+        HardwareService.getAll(user)
+      ]);
+
+      setHardware(hardwareData)
+      setIsLoading(false);
+    }
+    loadData();
+  }, [user]);
 
   const migrateParticipants = useCallback((data: unknown): Participant[] => {
     if (!Array.isArray(data)) return []
@@ -30,7 +47,6 @@ export default function HackathonPlanner() {
 
   const [todos, setTodos, todosLoaded] = useLocalStorage<Todo[]>("hackathon-todos", [])
   const [budget, setBudget, budgetLoaded] = useLocalStorage<BudgetEntry[]>("hackathon-budget", [])
-  const [hardware, setHardware, hardwareLoaded] = useLocalStorage<Hardware[]>("hackathon-hardware", [])
   const [participants, setParticipants, participantsLoaded] = useLocalStorage<Participant[]>(
     "hackathon-participants",
     [],
@@ -42,10 +58,7 @@ export default function HackathonPlanner() {
   )
   const [teams, setTeams, teamsLoaded] = useLocalStorage<Team[]>("hackathon-teams", [])
 
-  const isLoaded =
-    todosLoaded && budgetLoaded && hardwareLoaded && participantsLoaded && reservationsLoaded && teamsLoaded
-
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
