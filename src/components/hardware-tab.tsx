@@ -24,20 +24,28 @@ export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: "", description: "", quantity: "" })
 
-  const addHardware = () => {
+  const addHardware = async () => {
+    if (!user) return
     if (!name.trim() || !quantity) return
-    const item: Hardware = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      quantity: Number.parseInt(quantity),
-      available: Number.parseInt(quantity),
-      createdAt: new Date().toISOString(),
+
+    const qty = Number.parseInt(quantity)
+
+    try {
+      const newItem = await HardwareService.create(user, {
+        name,
+        description,
+        quantity: qty,
+        available: qty,
+      })
+
+      setHardware((prev) => [...prev, newItem])
+
+      setName("")
+      setDescription("")
+      setQuantity("")
+    } catch (error) {
+      console.error("Failed to add hardware:", error)
     }
-    setHardware((prev) => [...prev, item])
-    setName("")
-    setDescription("")
-    setQuantity("")
   }
 
   const deleteHardware = async (id: string) => {
