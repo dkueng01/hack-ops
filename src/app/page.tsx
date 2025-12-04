@@ -7,11 +7,14 @@ import { BudgetTab } from "@/components/budget-tab"
 import { HardwareTab } from "@/components/hardware-tab"
 import { ReservationsTab } from "@/components/reservations-tab"
 import { ParticipantsTab } from "@/components/participants-tab"
-import { BackupManager } from "@/components/backup-manager"
 import { useLocalStorage } from "@/lib/use-local-storage"
 import type { Todo, BudgetEntry, Hardware, Participant, Reservation, Team } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { stackClientApp } from "@/stack/client"
 
 export default function HackathonPlanner() {
+  const user = stackClientApp.useUser({ or: 'redirect' })
+
   const migrateParticipants = useCallback((data: unknown): Participant[] => {
     if (!Array.isArray(data)) return []
     return data.map((p: Record<string, unknown>) => ({
@@ -64,20 +67,10 @@ export default function HackathonPlanner() {
                 <p className="text-sm text-muted-foreground">Organize your hackathon with ease</p>
               </div>
             </div>
-            <BackupManager
-              todos={todos}
-              budget={budget}
-              hardware={hardware}
-              participants={participants}
-              reservations={reservations}
-              teams={teams}
-              setTodos={setTodos}
-              setBudget={setBudget}
-              setHardware={setHardware}
-              setParticipants={setParticipants}
-              setReservations={setReservations}
-              setTeams={setTeams}
-            />
+            <div className="flex items-center gap-4">
+              <p>{user.displayName}</p>
+              <Button variant="secondary" onClick={() => {stackClientApp.signOut()}}>Sign Out</Button>
+            </div>
           </div>
         </div>
       </header>
