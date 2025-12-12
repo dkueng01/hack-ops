@@ -266,7 +266,7 @@ export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
                     )}
                     {todo?.decisions?.length > 0 && editingTodoId !== todo.id && (
                       <Badge variant="outline" className="text-xs">
-                        {todo.decisions.length} decision{todo.decisions.length > 1 ? "s" : ""}
+                        {todo?.decisions?.length} decision{todo.decisions.length > 1 ? "s" : ""}
                       </Badge>
                     )}
                     {editingTodoId !== todo.id && (
@@ -305,7 +305,7 @@ export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
                         </Button>
                       </div>
 
-                      {todo.decisions.length > 0 && (
+                      {todo?.decisions?.length > 0 && (
                         <div className="space-y-2 pl-4 border-l-2 border-primary/30">
                           {todo.decisions.map((decision) => (
                             <div key={decision.id} className="flex items-start gap-2 text-sm">
