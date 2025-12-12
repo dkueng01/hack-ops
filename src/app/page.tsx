@@ -97,23 +97,23 @@ export default function HackathonPlanner() {
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="todos" className="gap-2">
               <ListTodo className="h-4 w-4" />
-              <span className="hidden sm:inline">Todos</span>
+              <span className="hidden md:inline">Todos</span>
             </TabsTrigger>
             <TabsTrigger value="budget" className="gap-2">
               <Wallet className="h-4 w-4" />
-              <span className="hidden sm:inline">Budget</span>
+              <span className="hidden md:inline">Budget</span>
             </TabsTrigger>
             <TabsTrigger value="participants" className="gap-2">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Participants</span>
+              <span className="hidden md:inline">Participants</span>
             </TabsTrigger>
             <TabsTrigger value="hardware" className="gap-2">
               <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Hardware</span>
+              <span className="hidden md:inline">Hardware</span>
             </TabsTrigger>
             <TabsTrigger value="reservations" className="gap-2">
               <CalendarCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">Reservations</span>
+              <span className="hidden md:inline">Reservations</span>
             </TabsTrigger>
           </TabsList>
 
