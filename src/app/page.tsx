@@ -15,6 +15,8 @@ import { stackClientApp } from "@/stack/client"
 import { HardwareService } from "@/lib/services/hardware-service"
 import { TodoService } from "@/lib/services/todo-service"
 import { BudgetService } from "@/lib/services/budget-service"
+import { ReservationService } from "@/lib/services/reservation-service"
+import { TeamService } from "@/lib/services/team-service"
 
 export default function HackathonPlanner() {
   const user = stackClientApp.useUser({ or: 'redirect' })
@@ -26,49 +28,34 @@ export default function HackathonPlanner() {
   const [hardware, setHardware] = useState<Hardware[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
   const [budget, setBudget] = useState<BudgetEntry[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [participants, setParticipants] = useState<Participant[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       if (!user) return;
 
-      const [hardwareData, todoData, budgetData] = await Promise.all([
+      const [hardwareData, todoData, budgetData, reservationData, participantData, teamData] = await Promise.all([
         HardwareService.getAll(user),
         TodoService.getAll(user),
-        BudgetService.getAll(user)
+        BudgetService.getAll(user),
+        ReservationService.getAll(user),
+        TeamService.getParticipants(user),
+        TeamService.getTeams(user)
       ]);
 
       setHardware(hardwareData)
       setTodos(todoData)
       setBudget(budgetData)
+      setReservations(reservationData)
+      setParticipants(participantData)
+      setTeams(teamData)
       setIsLoading(false);
     }
     loadData();
   }, [user]);
-
-  const migrateParticipants = useCallback((data: unknown): Participant[] => {
-    if (!Array.isArray(data)) return []
-    return data.map((p: Record<string, unknown>) => ({
-      id: (p.id as string) || crypto.randomUUID(),
-      name: (p.name as string) || "",
-      email: (p.email as string) || "",
-      skills: Array.isArray(p.skills) ? p.skills : [],
-      checkedIn: typeof p.checkedIn === "boolean" ? p.checkedIn : false,
-      teamId: (p.teamId as string | null) ?? null,
-      created_at: (p.created_at as string) || new Date().toISOString(),
-    }))
-  }, [])
-
-  const [participants, setParticipants, participantsLoaded] = useLocalStorage<Participant[]>(
-    "hackathon-participants",
-    [],
-    migrateParticipants,
-  )
-  const [reservations, setReservations, reservationsLoaded] = useLocalStorage<Reservation[]>(
-    "hackathon-reservations",
-    [],
-  )
-  const [teams, setTeams, teamsLoaded] = useLocalStorage<Team[]>("hackathon-teams", [])
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -145,11 +132,12 @@ export default function HackathonPlanner() {
               setParticipants={setParticipants}
               teams={teams}
               setTeams={setTeams}
+              user={user}
             />
           </TabsContent>
 
           <TabsContent value="hardware">
-            <HardwareTab hardware={hardware} setHardware={setHardware} user={user} />
+            <HardwareTab hardware={hardware} reservations={reservations} setHardware={setHardware} user={user} />
           </TabsContent>
 
           <TabsContent value="reservations">
@@ -159,6 +147,7 @@ export default function HackathonPlanner() {
               participants={participants}
               reservations={reservations}
               setReservations={setReservations}
+              user={user}
             />
           </TabsContent>
         </Tabs>

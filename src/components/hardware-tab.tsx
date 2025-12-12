@@ -7,17 +7,18 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import type { Hardware } from "@/lib/types"
+import type { Hardware, Reservation } from "@/lib/types"
 import { HardwareService } from "@/lib/services/hardware-service"
 import { CurrentUser } from "@stackframe/stack"
 
 interface HardwareTabProps {
   hardware: Hardware[]
+  reservations: Reservation[]
   setHardware: (hardware: Hardware[] | ((prev: Hardware[]) => Hardware[])) => void
   user: CurrentUser
 }
 
-export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
+export function HardwareTab({ hardware, reservations, setHardware, user }: HardwareTabProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [quantity, setQuantity] = useState("")
@@ -35,7 +36,6 @@ export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
         name,
         description,
         quantity: qty,
-        available: qty,
       })
 
       setHardware((prev) => [...prev, newItem])
@@ -80,14 +80,12 @@ export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
     if (!oldItem) return;
 
     const quantityDiff = newQuantity - oldItem.quantity;
-    const newAvailable = oldItem.available + quantityDiff;
 
     try {
       const updatedItem = await HardwareService.update(user, id, {
         name: editForm.name,
         description: editForm.description,
         quantity: newQuantity,
-        available: newAvailable,
       });
 
       setHardware((prev) =>
@@ -104,8 +102,17 @@ export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
     setEditingId(null)
   }
 
+  const getAvailableUnits = (hardwareId: string) => {
+    const reserved = reservations
+      .filter((r) => r.hardware_id === hardwareId && r.status === "approved")
+      .reduce((sum, r) => sum + r.quantity, 0)
+
+    const hw = hardware.find((h) => h.id === hardwareId)
+    return hw ? Math.max(0, hw.quantity - reserved) : 0
+  }
+
   const totalItems = hardware.reduce((sum, h) => sum + h.quantity, 0)
-  const totalAvailable = hardware.reduce((sum, h) => sum + h.available, 0)
+  const totalAvailable = hardware.reduce((sum, h) => sum + getAvailableUnits(h.id), 0)
 
   return (
     <div className="space-y-6">
@@ -229,8 +236,8 @@ export function HardwareTab({ hardware, setHardware, user }: HardwareTabProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">Total: {item.quantity}</Badge>
-                        <Badge variant={item.available > 0 ? "default" : "destructive"}>
-                          Available: {item.available}
+                        <Badge variant={getAvailableUnits(item.id) > 0 ? "default" : "destructive"}>
+                          Available: {getAvailableUnits(item.id)}
                         </Badge>
                       </div>
                     </>

@@ -8,12 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Participant, Team } from "@/lib/types"
+import { CurrentUser } from "@stackframe/stack"
+import { TeamService } from "@/lib/services/team-service"
 
 interface ParticipantsTabProps {
   participants: Participant[]
   setParticipants: (participants: Participant[] | ((prev: Participant[]) => Participant[])) => void
   teams: Team[]
   setTeams: (teams: Team[] | ((prev: Team[]) => Team[])) => void
+  user: CurrentUser
 }
 
 const TEAM_COLORS = [
@@ -30,35 +33,29 @@ const TEAM_COLORS = [
 const SUGGESTED_SKILLS = [
   "Frontend",
   "Backend",
-  "Design",
   "Mobile",
   "AI/ML",
   "DevOps",
   "Data Science",
   "Hardware",
-  "Project Management",
-  "Marketing",
 ]
 
-export function ParticipantsTab({ participants, setParticipants, teams, setTeams }: ParticipantsTabProps) {
-  // Participant form state
+export function ParticipantsTab({ participants, setParticipants, teams, setTeams, user }: ParticipantsTabProps) {
   const [participantName, setParticipantName] = useState("")
   const [participantEmail, setParticipantEmail] = useState("")
   const [participantSkills, setParticipantSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState("")
 
-  // Team form state
   const [teamName, setTeamName] = useState("")
   const [teamDescription, setTeamDescription] = useState("")
   const [teamColor, setTeamColor] = useState(TEAM_COLORS[0].value)
 
-  // Edit states
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null)
   const [editParticipantForm, setEditParticipantForm] = useState({
     name: "",
     email: "",
     skills: [] as string[],
-    teamId: null as string | null,
+    team_id: null as string | null,
   })
   const [editSkillInput, setEditSkillInput] = useState("")
 
@@ -69,29 +66,28 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
     color: "",
   })
 
-  // Filter state
   const [filterSkill, setFilterSkill] = useState<string | null>(null)
   const [filterCheckedIn, setFilterCheckedIn] = useState<boolean | null>(null)
 
-  // Add participant
-  const addParticipant = () => {
+  const addParticipant = async () => {
     if (!participantName.trim()) return
-    const participant: Participant = {
-      id: crypto.randomUUID(),
-      name: participantName,
-      email: participantEmail,
-      skills: participantSkills,
-      checkedIn: false,
-      teamId: null,
-      created_at: new Date().toISOString(),
+    try {
+      const newP = await TeamService.createParticipant(user, {
+        name: participantName,
+        email: participantEmail,
+        skills: participantSkills,
+        checked_in: false,
+        team_id: null,
+      })
+      setParticipants((prev) => [newP, ...prev])
+      setParticipantName("")
+      setParticipantEmail("")
+      setParticipantSkills([])
+    } catch (error) {
+      console.error("Failed to add participant:", error)
     }
-    setParticipants((prev) => [...prev, participant])
-    setParticipantName("")
-    setParticipantEmail("")
-    setParticipantSkills([])
   }
 
-  // Add skill to new participant form
   const addSkill = () => {
     if (!skillInput.trim() || participantSkills.includes(skillInput.trim())) return
     setParticipantSkills((prev) => [...prev, skillInput.trim()])
@@ -102,71 +98,100 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
     setParticipantSkills((prev) => prev.filter((s) => s !== skill))
   }
 
-  // Add team
-  const addTeam = () => {
+  const addTeam = async () => {
     if (!teamName.trim()) return
-    const team: Team = {
-      id: crypto.randomUUID(),
-      name: teamName,
-      description: teamDescription,
-      color: teamColor,
-      created_at: new Date().toISOString(),
+    try {
+      const newTeam = await TeamService.createTeam(user, {
+        name: teamName,
+        description: teamDescription,
+        color: teamColor,
+      })
+      setTeams((prev) => [newTeam, ...prev])
+      setTeamName("")
+      setTeamDescription("")
+      setTeamColor(TEAM_COLORS[0].value)
+    } catch (error) {
+      console.error("Failed to add team:", error)
     }
-    setTeams((prev) => [...prev, team])
-    setTeamName("")
-    setTeamDescription("")
-    setTeamColor(TEAM_COLORS[0].value)
   }
 
-  // Delete team
-  const deleteTeam = (id: string) => {
+  const deleteTeam = async (id: string) => {
+    const oldTeams = teams
+    const oldParticipants = participants
     setTeams((prev) => prev.filter((t) => t.id !== id))
-    // Remove team assignment from participants
-    setParticipants((prev) => prev.map((p) => (p.teamId === id ? { ...p, teamId: null } : p)))
+    setParticipants((prev) =>
+      prev.map((p) => (p.team_id === id ? { ...p, team_id: null } : p)),
+    )
+    try {
+      await TeamService.deleteTeam(user, id)
+    } catch (error) {
+      console.error("Delete team failed:", error)
+      setTeams(oldTeams)
+      setParticipants(oldParticipants)
+    }
   }
 
-  // Toggle check-in
-  const toggleCheckIn = (id: string) => {
-    setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, checkedIn: !p.checkedIn } : p)))
+  const toggleCheckIn = async (id: string) => {
+    const participant = participants.find((p) => p.id === id)
+    if (!participant) return
+    const newCheckedIn = !participant.checked_in
+
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, checked_in: newCheckedIn } : p,
+      ),
+    )
+
+    try {
+      await TeamService.updateParticipant(user, id, { checked_in: newCheckedIn })
+    } catch (error) {
+      console.error("Failed to toggle check-in:", error)
+    }
   }
 
-  // Assign team
   const assignTeam = (participantId: string, teamId: string | null) => {
     setParticipants((prev) => prev.map((p) => (p.id === participantId ? { ...p, teamId } : p)))
   }
 
-  // Delete participant
-  const deleteParticipant = (id: string) => {
+  const deleteParticipant = async (id: string) => {
+    const old = participants
     setParticipants((prev) => prev.filter((p) => p.id !== id))
+    try {
+      await TeamService.deleteParticipant(user, id)
+    } catch (error) {
+      console.error("Delete failed:", error)
+      setParticipants(old)
+    }
   }
 
-  // Edit participant
   const startEditParticipant = (p: Participant) => {
     setEditingParticipantId(p.id)
     setEditParticipantForm({
       name: p.name,
       email: p.email || "",
       skills: [...(p.skills || [])],
-      teamId: p.teamId ?? null,
+      team_id: p.team_id ?? null,
     })
   }
 
-  const saveEditParticipant = (id: string) => {
+  const saveEditParticipant = async (id: string) => {
     if (!editParticipantForm.name.trim()) return
+    const updates = {
+      ...editParticipantForm,
+    }
+    const old = participants
     setParticipants((prev) =>
       prev.map((p) =>
-        p.id === id
-          ? {
-            ...p,
-            name: editParticipantForm.name,
-            email: editParticipantForm.email,
-            skills: editParticipantForm.skills,
-            teamId: editParticipantForm.teamId,
-          }
-          : p,
+        p.id === id ? { ...p, ...updates } : p,
       ),
     )
     setEditingParticipantId(null)
+    try {
+      await TeamService.updateParticipant(user, id, updates)
+    } catch (error) {
+      console.error("Update failed:", error)
+      setParticipants(old)
+    }
   }
 
   const addEditSkill = () => {
@@ -185,7 +210,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
     }))
   }
 
-  // Edit team
   const startEditTeam = (t: Team) => {
     setEditingTeamId(t.id)
     setEditTeamForm({
@@ -195,48 +219,45 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
     })
   }
 
-  const saveEditTeam = (id: string) => {
+  const saveEditTeam = async (id: string) => {
     if (!editTeamForm.name.trim()) return
+    const updates = { ...editTeamForm }
+    const old = teams
     setTeams((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? {
-            ...t,
-            name: editTeamForm.name,
-            description: editTeamForm.description,
-            color: editTeamForm.color,
-          }
-          : t,
-      ),
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     )
     setEditingTeamId(null)
+    try {
+      await TeamService.updateTeam(user, id, updates)
+    } catch (error) {
+      console.error("Failed to update team:", error)
+      setTeams(old)
+    }
   }
 
-  // Get team by ID
   const getTeam = (id: string | null) => (id ? teams.find((t) => t.id === id) : undefined)
-  const getTeamMembers = (teamId: string) => participants.filter((p) => p.teamId === teamId)
+  const getTeamMembers = (teamId: string) => participants.filter((p) => p.team_id === teamId)
 
   const safeParticipants = participants.map((p) => ({
     ...p,
     skills: p.skills || [],
-    checkedIn: p.checkedIn ?? false,
-    teamId: p.teamId ?? null,
+    checked_in: p.checked_in ?? false,
+    team_id: p.team_id ?? null,
     email: p.email || "",
   }))
 
   const filteredParticipants = safeParticipants.filter((p) => {
     if (filterSkill && !p.skills.includes(filterSkill)) return false
-    if (filterCheckedIn !== null && p.checkedIn !== filterCheckedIn) return false
+    if (filterCheckedIn !== null && p.checked_in !== filterCheckedIn) return false
     return true
   })
 
   const allSkills = Array.from(new Set(safeParticipants.flatMap((p) => p.skills))).sort()
-  const checkedInCount = safeParticipants.filter((p) => p.checkedIn).length
-  const unassignedCount = safeParticipants.filter((p) => !p.teamId).length
+  const checkedInCount = safeParticipants.filter((p) => p.checked_in).length
+  const unassignedCount = safeParticipants.filter((p) => !p.team_id).length
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent>
@@ -264,7 +285,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
         </Card>
       </div>
 
-      {/* Teams Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -396,7 +416,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
         </CardContent>
       </Card>
 
-      {/* Add Participant */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -430,7 +449,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
             </div>
           </div>
 
-          {/* Suggested Skills */}
           <div className="flex flex-wrap gap-2">
             {SUGGESTED_SKILLS.filter((s) => !participantSkills.includes(s)).map((skill) => (
               <Badge
@@ -444,7 +462,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
             ))}
           </div>
 
-          {/* Selected Skills */}
           {participantSkills.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {participantSkills.map((skill) => (
@@ -462,7 +479,6 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
         </CardContent>
       </Card>
 
-      {/* Participants List */}
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -534,11 +550,11 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
                             placeholder="Email"
                           />
                           <Select
-                            value={editParticipantForm.teamId || "none"}
+                            value={editParticipantForm.team_id || "none"}
                             onValueChange={(v) =>
                               setEditParticipantForm((prev) => ({
                                 ...prev,
-                                teamId: v === "none" ? null : v,
+                                team_id: v === "none" ? null : v,
                               }))
                             }
                           >
@@ -588,19 +604,19 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
                     ) : (
                       <>
                         <Button
-                          variant={p.checkedIn ? "default" : "outline"}
+                          variant={p.checked_in ? "default" : "outline"}
                           size="icon"
                           className="shrink-0"
                           onClick={() => toggleCheckIn(p.id)}
                         >
-                          {p.checkedIn ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                          {p.checked_in ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
                         </Button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{p.name}</p>
                             {p.email && <span className="text-xs text-muted-foreground">({p.email})</span>}
-                            {p.teamId && getTeam(p.teamId) && (
-                              <Badge className={`${getTeam(p.teamId)?.color} border`}>{getTeam(p.teamId)?.name}</Badge>
+                            {p.team_id && getTeam(p.team_id) && (
+                              <Badge className={`${getTeam(p.team_id)?.color} border`}>{getTeam(p.team_id)?.name}</Badge>
                             )}
                           </div>
                           {p.skills.length > 0 && (
@@ -614,7 +630,7 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
                           )}
                         </div>
                         <Select
-                          value={p.teamId || "none"}
+                          value={p.team_id || "none"}
                           onValueChange={(v) => assignTeam(p.id, v === "none" ? null : v)}
                         >
                           <SelectTrigger className="w-[130px]">

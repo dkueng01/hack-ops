@@ -35,5 +35,24 @@ export const ReservationService = {
       .eq("id", id);
 
     if (error) throw error;
-  }
+  },
+
+  async update(user: CurrentUser, id: string, updates: Partial<Reservation>) {
+    const pg = await getApiClient(user)
+    const { data, error } = await pg
+      .from("reservations")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as Reservation
+  },
+
+  async delete(user: CurrentUser, id: string) {
+    const pg = await getApiClient(user)
+    const { error } = await pg.from("reservations").delete().eq("id", id)
+    if (error) throw error
+  },
 };

@@ -26,7 +26,6 @@ export interface Hardware {
   name: string
   description: string
   quantity: number
-  available: number
   created_at: string
 }
 
@@ -35,8 +34,8 @@ export interface Participant {
   name: string
   email: string
   skills: string[]
-  checkedIn: boolean
-  teamId: string | null
+  checked_in: boolean
+  team_id: string | null
   created_at: string
 }
 
@@ -50,8 +49,8 @@ export interface Team {
 
 export interface Reservation {
   id: string
-  hardwareId: string
-  participantId: string
+  hardware_id: string
+  participant_id: string
   quantity: number
   status: "pending" | "approved" | "returned"
   created_at: string

@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Hardware, Participant, Reservation } from "@/lib/types"
+import { CurrentUser } from "@stackframe/stack"
+import { ReservationService } from "@/lib/services/reservation-service"
 
 interface ReservationsTabProps {
   hardware: Hardware[]
@@ -15,6 +17,7 @@ interface ReservationsTabProps {
   participants: Participant[]
   reservations: Reservation[]
   setReservations: (reservations: Reservation[] | ((prev: Reservation[]) => Reservation[])) => void
+  user: CurrentUser
 }
 
 export function ReservationsTab({
@@ -23,6 +26,7 @@ export function ReservationsTab({
   participants,
   reservations,
   setReservations,
+  user,
 }: ReservationsTabProps) {
   const [selectedHardware, setSelectedHardware] = useState("")
   const [selectedParticipant, setSelectedParticipant] = useState("")
@@ -30,50 +34,79 @@ export function ReservationsTab({
   const [editingReservationId, setEditingReservationId] = useState<string | null>(null)
   const [editReservationForm, setEditReservationForm] = useState({ quantity: "" })
 
-  const createReservation = () => {
+  const createReservation = async () => {
     if (!selectedHardware || !selectedParticipant || !reserveQuantity) return
     const hw = hardware.find((h) => h.id === selectedHardware)
     const qty = Number.parseInt(reserveQuantity)
     if (!hw || qty > hw.available) return
 
-    const reservation: Reservation = {
-      id: crypto.randomUUID(),
-      hardwareId: selectedHardware,
-      participantId: selectedParticipant,
-      quantity: qty,
-      status: "approved",
-      created_at: new Date().toISOString(),
+    try {
+      const newReservation = await ReservationService.create(user, {
+        hardware_id: selectedHardware,
+        participant_id: selectedParticipant,
+        quantity: qty,
+        status: "approved",
+      })
+      setReservations((prev) => [newReservation, ...prev])
+      setHardware((prev) =>
+        prev.map((h) =>
+          h.id === selectedHardware ? { ...h, available: h.available - qty } : h,
+        ),
+      )
+      setSelectedHardware("")
+      setSelectedParticipant("")
+      setReserveQuantity("1")
+    } catch (error) {
+      console.error("Failed to create reservation:", error)
     }
-
-    setReservations((prev) => [...prev, reservation])
-    setHardware((prev) => prev.map((h) => (h.id === selectedHardware ? { ...h, available: h.available - qty } : h)))
-    setSelectedHardware("")
-    setSelectedParticipant("")
-    setReserveQuantity("1")
   }
 
-  const returnHardware = (reservationId: string) => {
+  const returnHardware = async (reservationId: string) => {
     const reservation = reservations.find((r) => r.id === reservationId)
     if (!reservation) return
 
-    setReservations((prev) => prev.map((r) => (r.id === reservationId ? { ...r, status: "returned" as const } : r)))
-    setHardware((prev) =>
-      prev.map((h) => (h.id === reservation.hardwareId ? { ...h, available: h.available + reservation.quantity } : h)),
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === reservationId ? { ...r, status: "returned" as const } : r,
+      ),
     )
+    setHardware((prev) =>
+      prev.map((h) =>
+        h.id === reservation.hardware_id
+          ? { ...h, available: h.available + reservation.quantity }
+          : h,
+      ),
+    )
+
+    try {
+      await ReservationService.updateStatus(user, reservationId, "returned")
+    } catch (error) {
+      console.error("Failed to return hardware:", error)
+    }
   }
 
-  const deleteReservation = (id: string) => {
+  const deleteReservation = async (id: string) => {
     const reservation = reservations.find((r) => r.id === id)
     if (!reservation) return
+    const old = reservations
 
     if (reservation.status !== "returned") {
       setHardware((prev) =>
         prev.map((h) =>
-          h.id === reservation.hardwareId ? { ...h, available: h.available + reservation.quantity } : h,
+          h.id === reservation.hardware_id
+            ? { ...h, available: h.available + reservation.quantity }
+            : h,
         ),
       )
     }
+
     setReservations((prev) => prev.filter((r) => r.id !== id))
+    try {
+      await ReservationService.delete(user, id)
+    } catch (error) {
+      console.error("Failed to delete reservation:", error)
+      setReservations(old)
+    }
   }
 
   const startEditReservation = (res: Reservation) => {
@@ -81,14 +114,13 @@ export function ReservationsTab({
     setEditReservationForm({ quantity: res.quantity.toString() })
   }
 
-  const saveEditReservation = (id: string) => {
+  const saveEditReservation = async (id: string) => {
     const reservation = reservations.find((r) => r.id === id)
     if (!reservation || !editReservationForm.quantity) return
 
     const newQty = Number.parseInt(editReservationForm.quantity)
     const oldQty = reservation.quantity
-    const hw = hardware.find((h) => h.id === reservation.hardwareId)
-
+    const hw = hardware.find((h) => h.id === reservation.hardware_id)
     if (!hw) return
 
     const availableForEdit = hw.available + (reservation.status !== "returned" ? oldQty : 0)
@@ -96,12 +128,26 @@ export function ReservationsTab({
 
     if (reservation.status !== "returned") {
       setHardware((prev) =>
-        prev.map((h) => (h.id === reservation.hardwareId ? { ...h, available: h.available + oldQty - newQty } : h)),
+        prev.map((h) =>
+          h.id === reservation.hardware_id
+            ? { ...h, available: h.available + oldQty - newQty }
+            : h,
+        ),
       )
     }
 
-    setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, quantity: newQty } : r)))
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, quantity: newQty } : r,
+      ),
+    )
     setEditingReservationId(null)
+
+    try {
+      await ReservationService.update(user, id, { quantity: newQty })
+    } catch (error) {
+      console.error("Failed to update reservation:", error)
+    }
   }
 
   const cancelEditReservation = () => {
@@ -198,10 +244,10 @@ export function ReservationsTab({
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{getParticipantName(res.participantId)}</p>
+                      <p className="font-medium">{getParticipantName(res.participant_id)}</p>
                       {editingReservationId === res.id ? (
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-muted-foreground">{getHardwareName(res.hardwareId)} ×</span>
+                          <span className="text-sm text-muted-foreground">{getHardwareName(res.hardware_id)} ×</span>
                           <Input
                             type="number"
                             value={editReservationForm.quantity}
@@ -223,7 +269,7 @@ export function ReservationsTab({
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          {getHardwareName(res.hardwareId)} × {res.quantity}
+                          {getHardwareName(res.hardware_id)} × {res.quantity}
                         </p>
                       )}
                     </div>
@@ -244,10 +290,6 @@ export function ReservationsTab({
                             onClick={() => startEditReservation(res)}
                           >
                             <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => returnHardware(res.id)}>
-                            <RotateCcw className="h-4 w-4 mr-1" />
-                            Return
                           </Button>
                         </>
                       )}

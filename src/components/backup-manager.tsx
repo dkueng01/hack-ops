@@ -126,8 +126,8 @@ export function BackupManager({
         data.data.participants = data.data.participants.map((p: any) => ({
           ...p,
           skills: p.skills || [],
-          checkedIn: p.checkedIn ?? false,
-          teamId: p.teamId ?? null,
+          checked_in: p.checked_in ?? false,
+          team_id: p.team_id ?? null,
         }))
 
         setImportError(null)
