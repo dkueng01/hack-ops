@@ -38,7 +38,7 @@ export function ReservationsTab({
     if (!selectedHardware || !selectedParticipant || !reserveQuantity) return
     const hw = hardware.find((h) => h.id === selectedHardware)
     const qty = Number.parseInt(reserveQuantity)
-    if (!hw || qty > hw.available) return
+    if (!hw || qty > getAvailableUnits(hw.id)) return
 
     try {
       const newReservation = await ReservationService.create(user, {
@@ -50,7 +50,7 @@ export function ReservationsTab({
       setReservations((prev) => [newReservation, ...prev])
       setHardware((prev) =>
         prev.map((h) =>
-          h.id === selectedHardware ? { ...h, available: h.available - qty } : h,
+          h.id === selectedHardware ? { ...h, available: getAvailableUnits(h.id) - qty } : h,
         ),
       )
       setSelectedHardware("")
@@ -73,7 +73,7 @@ export function ReservationsTab({
     setHardware((prev) =>
       prev.map((h) =>
         h.id === reservation.hardware_id
-          ? { ...h, available: h.available + reservation.quantity }
+          ? { ...h, available: getAvailableUnits(h.id) + reservation.quantity }
           : h,
       ),
     )
@@ -94,7 +94,7 @@ export function ReservationsTab({
       setHardware((prev) =>
         prev.map((h) =>
           h.id === reservation.hardware_id
-            ? { ...h, available: h.available + reservation.quantity }
+            ? { ...h, available: getAvailableUnits(h.id) + reservation.quantity }
             : h,
         ),
       )
@@ -123,14 +123,14 @@ export function ReservationsTab({
     const hw = hardware.find((h) => h.id === reservation.hardware_id)
     if (!hw) return
 
-    const availableForEdit = hw.available + (reservation.status !== "returned" ? oldQty : 0)
+    const availableForEdit = getAvailableUnits(hw.id) + (reservation.status !== "returned" ? oldQty : 0)
     if (newQty > availableForEdit) return
 
     if (reservation.status !== "returned") {
       setHardware((prev) =>
         prev.map((h) =>
           h.id === reservation.hardware_id
-            ? { ...h, available: h.available + oldQty - newQty }
+            ? { ...h, available: getAvailableUnits(h.id) + oldQty - newQty }
             : h,
         ),
       )
@@ -154,13 +154,23 @@ export function ReservationsTab({
     setEditingReservationId(null)
   }
 
+  const getAvailableUnits = (hardwareId: string) => {
+    const hw = hardware.find((h) => h.id === hardwareId)
+    if (!hw) return 0
+
+    const reservedQty = reservations
+      .filter((r) => r.hardware_id === hardwareId && r.status === "approved")
+      .reduce((sum, r) => sum + r.quantity, 0)
+
+    return Math.max(0, hw.quantity - reservedQty)
+  }
+
   const getParticipantName = (id: string) => participants.find((p) => p.id === id)?.name || "Unknown"
 
   const getHardwareName = (id: string) => hardware.find((h) => h.id === id)?.name || "Unknown"
 
   return (
     <div className="space-y-6">
-      {/* Create Reservation */}
       <Card>
         <CardHeader>
           <CardTitle>Reserve Hardware</CardTitle>
@@ -186,10 +196,10 @@ export function ReservationsTab({
               </SelectTrigger>
               <SelectContent>
                 {hardware
-                  .filter((h) => h.available > 0)
+                  .filter((h) => getAvailableUnits(h.id) > 0)
                   .map((h) => (
                     <SelectItem key={h.id} value={h.id}>
-                      {h.name} ({h.available} available)
+                      {h.name} ({getAvailableUnits(h.id)} available)
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -199,7 +209,7 @@ export function ReservationsTab({
               type="number"
               placeholder="Quantity"
               min="1"
-              max={hardware.find((h) => h.id === selectedHardware)?.available || 1}
+              max={getAvailableUnits(selectedHardware || "")}
               value={reserveQuantity}
               onChange={(e) => setReserveQuantity(e.target.value)}
             />
@@ -218,7 +228,6 @@ export function ReservationsTab({
         </CardContent>
       </Card>
 
-      {/* Reservations List */}
       <Card>
         <CardHeader>
           <CardTitle>Active Reservations</CardTitle>
@@ -254,6 +263,7 @@ export function ReservationsTab({
                             onChange={(e) => setEditReservationForm({ quantity: e.target.value })}
                             className="h-6 w-16 text-sm"
                             min="1"
+                            max={getAvailableUnits(res.hardware_id) + res.quantity}
                           />
                           <Button
                             size="sm"
