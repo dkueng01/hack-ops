@@ -37,6 +37,19 @@ export const TodoService = {
     if (error) throw error;
   },
 
+  async update(user: CurrentUser, id: string, title: string) {
+    const pg = await getApiClient(user)
+    const { data, error } = await pg
+      .from("todos")
+      .update({ title })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as Todo
+  },
+
   async delete(user: CurrentUser, id: string) {
     const pg = await getApiClient(user);
     const { error } = await pg.from("todos").delete().eq("id", id);

@@ -13,6 +13,7 @@ import type { Todo, BudgetEntry, Hardware, Participant, Reservation, Team } from
 import { Button } from "@/components/ui/button"
 import { stackClientApp } from "@/stack/client"
 import { HardwareService } from "@/lib/services/hardware-service"
+import { TodoService } from "@/lib/services/todo-service"
 
 export default function HackathonPlanner() {
   const user = stackClientApp.useUser({ or: 'redirect' })
@@ -22,17 +23,20 @@ export default function HackathonPlanner() {
   const activeTab = searchParams.get('tab') || 'todos'
 
   const [hardware, setHardware] = useState<Hardware[]>([])
+  const [todos, setTodos] = useState<Todo[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       if (!user) return;
 
-      const [hardwareData] = await Promise.all([
-        HardwareService.getAll(user)
+      const [hardwareData, todoData] = await Promise.all([
+        HardwareService.getAll(user),
+        TodoService.getAll(user)
       ]);
 
       setHardware(hardwareData)
+      setTodos(todoData)
       setIsLoading(false);
     }
     loadData();
@@ -51,7 +55,6 @@ export default function HackathonPlanner() {
     }))
   }, [])
 
-  const [todos, setTodos, todosLoaded] = useLocalStorage<Todo[]>("hackathon-todos", [])
   const [budget, setBudget, budgetLoaded] = useLocalStorage<BudgetEntry[]>("hackathon-budget", [])
   const [participants, setParticipants, participantsLoaded] = useLocalStorage<Participant[]>(
     "hackathon-participants",
@@ -126,7 +129,7 @@ export default function HackathonPlanner() {
           </TabsList>
 
           <TabsContent value="todos">
-            <TodosTab todos={todos} setTodos={setTodos} />
+            <TodosTab todos={todos} setTodos={setTodos} user={user} />
           </TabsContent>
 
           <TabsContent value="budget">

@@ -18,13 +18,16 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Todo, Decision } from "@/lib/types"
+import { CurrentUser } from "@stackframe/stack"
+import { TodoService } from "@/lib/services/todo-service"
 
 interface TodosTabProps {
   todos: Todo[]
   setTodos: (todos: Todo[] | ((prev: Todo[]) => Todo[])) => void
+  user: CurrentUser
 }
 
-export function TodosTab({ todos, setTodos }: TodosTabProps) {
+export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
   const [newTodo, setNewTodo] = useState("")
   const [expandedTodos, setExpandedTodos] = useState<Set<string>>(new Set())
   const [newDecisions, setNewDecisions] = useState<Record<string, string>>({})
@@ -33,25 +36,45 @@ export function TodosTab({ todos, setTodos }: TodosTabProps) {
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null)
   const [editingDecisionText, setEditingDecisionText] = useState("")
 
-  const addTodo = () => {
+  const addTodo = async () => {
     if (!newTodo.trim()) return
-    const todo: Todo = {
-      id: crypto.randomUUID(),
-      title: newTodo,
-      completed: false,
-      decisions: [],
-      createdAt: new Date().toISOString(),
+    try {
+      const todo = await TodoService.create(user, newTodo)
+      setTodos((prev) => [todo, ...prev])
+      setNewTodo("")
+    } catch (error) {
+      console.error("Failed to create todo:", error)
     }
-    setTodos((prev) => [...prev, todo])
-    setNewTodo("")
   }
 
-  const toggleTodo = (id: string) => {
-    setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo)))
+  const toggleTodo = async (id: string) => {
+    const target = todos.find((t) => t.id === id)
+    if (!target) return
+    const newStatus = !target.completed
+
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: newStatus } : t))
+    )
+
+    try {
+      await TodoService.toggle(user, id, newStatus)
+    } catch (error) {
+      console.error("Toggle failed:", error)
+      setTodos((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, completed: target.completed } : t))
+      )
+    }
   }
 
-  const deleteTodo = (id: string) => {
-    setTodos((prev) => prev.filter((todo) => todo.id !== id))
+  const deleteTodo = async (id: string) => {
+    const prevTodos = todos
+    setTodos((p) => p.filter((t) => t.id !== id))
+    try {
+      await TodoService.delete(user, id)
+    } catch (error) {
+      console.error("Failed to delete:", error)
+      setTodos(prevTodos)
+    }
   }
 
   const toggleExpand = (id: string) => {
@@ -93,10 +116,21 @@ export function TodosTab({ todos, setTodos }: TodosTabProps) {
     setEditingTodoTitle(todo.title)
   }
 
-  const saveEditTodo = (id: string) => {
+  const saveEditTodo = async (id: string) => {
     if (!editingTodoTitle.trim()) return
-    setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, title: editingTodoTitle } : todo)))
+    const oldTodos = todos
+    const newTitle = editingTodoTitle
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, title: newTitle } : t))
+    )
     setEditingTodoId(null)
+
+    try {
+      await TodoService.update(user, id, newTitle)
+    } catch (error) {
+      console.error("Update failed:", error)
+      setTodos(oldTodos)
+    }
   }
 
   const cancelEditTodo = () => {
@@ -114,9 +148,9 @@ export function TodosTab({ todos, setTodos }: TodosTabProps) {
       prev.map((todo) =>
         todo.id === todoId
           ? {
-              ...todo,
-              decisions: todo.decisions.map((d) => (d.id === decisionId ? { ...d, text: editingDecisionText } : d)),
-            }
+            ...todo,
+            decisions: todo.decisions.map((d) => (d.id === decisionId ? { ...d, text: editingDecisionText } : d)),
+          }
           : todo,
       ),
     )
@@ -206,7 +240,7 @@ export function TodosTab({ todos, setTodos }: TodosTabProps) {
                         {todo.title}
                       </span>
                     )}
-                    {todo.decisions.length > 0 && editingTodoId !== todo.id && (
+                    {todo?.decisions?.length > 0 && editingTodoId !== todo.id && (
                       <Badge variant="outline" className="text-xs">
                         {todo.decisions.length} decision{todo.decisions.length > 1 ? "s" : ""}
                       </Badge>
