@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useState } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Zap, ListTodo, Wallet, Package, CalendarCheck, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TodosTab } from "@/components/todos-tab"
@@ -15,7 +16,12 @@ import { HardwareService } from "@/lib/services/hardware-service"
 
 export default function HackathonPlanner() {
   const user = stackClientApp.useUser({ or: 'redirect' })
- const [hardware, setHardware] = useState<Hardware[]>([])
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'todos'
+
+  const [hardware, setHardware] = useState<Hardware[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -58,6 +64,12 @@ export default function HackathonPlanner() {
   )
   const [teams, setTeams, teamsLoaded] = useLocalStorage<Team[]>("hackathon-teams", [])
 
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', value)
+    router.replace(`${pathname}?${params.toString()}`)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -82,14 +94,14 @@ export default function HackathonPlanner() {
             </div>
             <div className="flex items-center gap-4">
               <p>{user.displayName}</p>
-              <Button variant="secondary" onClick={() => {stackClientApp.signOut()}}>Sign Out</Button>
+              <Button variant="secondary" onClick={() => { stackClientApp.signOut() }}>Sign Out</Button>
             </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="todos" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="todos" className="gap-2">
               <ListTodo className="h-4 w-4" />
