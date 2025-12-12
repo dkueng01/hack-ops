@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import type { Todo, Decision } from "@/lib/types"
 import { CurrentUser } from "@stackframe/stack"
 import { TodoService } from "@/lib/services/todo-service"
+import { DecisionService } from "@/lib/services/decision-service"
 
 interface TodosTabProps {
   todos: Todo[]
@@ -89,26 +90,39 @@ export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
     })
   }
 
-  const addDecision = (todoId: string) => {
+  const addDecision = async (todoId: string) => {
     const text = newDecisions[todoId]?.trim()
     if (!text) return
-    const decision: Decision = {
-      id: crypto.randomUUID(),
-      text,
-      createdAt: new Date().toISOString(),
+
+    try {
+      const d = await DecisionService.create(user, todoId, text)
+      setTodos((prev) =>
+        prev.map((t) =>
+          t.id === todoId ? { ...t, decisions: [d, ...(t.decisions || [])] } : t
+        )
+      )
+      setNewDecisions((p) => ({ ...p, [todoId]: "" }))
+    } catch (error) {
+      console.error("Failed to add decision:", error)
     }
-    setTodos((prev) =>
-      prev.map((todo) => (todo.id === todoId ? { ...todo, decisions: [...todo.decisions, decision] } : todo)),
-    )
-    setNewDecisions((prev) => ({ ...prev, [todoId]: "" }))
   }
 
-  const deleteDecision = (todoId: string, decisionId: string) => {
+  const deleteDecision = async (todoId: string, decisionId: string) => {
+    const oldTodos = todos
     setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === todoId ? { ...todo, decisions: todo.decisions.filter((d) => d.id !== decisionId) } : todo,
-      ),
+      prev.map((t) =>
+        t.id === todoId
+          ? { ...t, decisions: t.decisions.filter((d) => d.id !== decisionId) }
+          : t
+      )
     )
+
+    try {
+      await DecisionService.delete(user, decisionId)
+    } catch (error) {
+      console.error("Failed to delete decision:", error)
+      setTodos(oldTodos)
+    }
   }
 
   const startEditTodo = (todo: Todo) => {
@@ -142,23 +156,33 @@ export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
     setEditingDecisionText(decision.text)
   }
 
-  const saveEditDecision = (todoId: string, decisionId: string) => {
+  const cancelEditDecision = () => setEditingDecisionId(null)
+
+  const saveEditDecision = async (todoId: string, decisionId: string) => {
     if (!editingDecisionText.trim()) return
+    const newText = editingDecisionText
+    const oldTodos = todos
+
     setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === todoId
+      prev.map((t) =>
+        t.id === todoId
           ? {
-            ...todo,
-            decisions: todo.decisions.map((d) => (d.id === decisionId ? { ...d, text: editingDecisionText } : d)),
+            ...t,
+            decisions: t.decisions.map((d) =>
+              d.id === decisionId ? { ...d, text: newText } : d
+            ),
           }
-          : todo,
-      ),
+          : t
+      )
     )
     setEditingDecisionId(null)
-  }
 
-  const cancelEditDecision = () => {
-    setEditingDecisionId(null)
+    try {
+      await DecisionService.update(user, decisionId, newText)
+    } catch (error) {
+      console.error("Update decision failed:", error)
+      setTodos(oldTodos)
+    }
   }
 
   const completedCount = todos.filter((t) => t.completed).length
@@ -318,7 +342,7 @@ export function TodosTab({ todos, setTodos, user }: TodosTabProps) {
                                 <>
                                   <span className="flex-1 text-muted-foreground">{decision.text}</span>
                                   <span className="text-xs text-muted-foreground">
-                                    {new Date(decision.createdAt).toLocaleDateString()}
+                                    {new Date(decision.created_at).toLocaleDateString()}
                                   </span>
                                   <Button
                                     variant="ghost"

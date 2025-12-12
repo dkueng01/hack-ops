@@ -83,7 +83,7 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
       skills: participantSkills,
       checkedIn: false,
       teamId: null,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
     setParticipants((prev) => [...prev, participant])
     setParticipantName("")
@@ -110,7 +110,7 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
       name: teamName,
       description: teamDescription,
       color: teamColor,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
     setTeams((prev) => [...prev, team])
     setTeamName("")
@@ -157,12 +157,12 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
       prev.map((p) =>
         p.id === id
           ? {
-              ...p,
-              name: editParticipantForm.name,
-              email: editParticipantForm.email,
-              skills: editParticipantForm.skills,
-              teamId: editParticipantForm.teamId,
-            }
+            ...p,
+            name: editParticipantForm.name,
+            email: editParticipantForm.email,
+            skills: editParticipantForm.skills,
+            teamId: editParticipantForm.teamId,
+          }
           : p,
       ),
     )
@@ -201,11 +201,11 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
       prev.map((t) =>
         t.id === id
           ? {
-              ...t,
-              name: editTeamForm.name,
-              description: editTeamForm.description,
-              color: editTeamForm.color,
-            }
+            ...t,
+            name: editTeamForm.name,
+            description: editTeamForm.description,
+            color: editTeamForm.color,
+          }
           : t,
       ),
     )

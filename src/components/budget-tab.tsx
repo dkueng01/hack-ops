@@ -47,7 +47,7 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
       description,
       amount: Number.parseFloat(amount),
       category,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
     setBudget((prev) => [...prev, entry])
     setDescription("")
@@ -75,12 +75,12 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
       prev.map((entry) =>
         entry.id === id
           ? {
-              ...entry,
-              type: editForm.type,
-              description: editForm.description,
-              amount: Number.parseFloat(editForm.amount),
-              category: editForm.category,
-            }
+            ...entry,
+            type: editForm.type,
+            description: editForm.description,
+            amount: Number.parseFloat(editForm.amount),
+            category: editForm.category,
+          }
           : entry,
       ),
     )
@@ -198,7 +198,7 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
           ) : (
             <div className="space-y-2">
               {budget
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .map((entry) => (
                   <div key={entry.id} className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30">
                     {editingId === entry.id ? (
@@ -264,7 +264,7 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
                         <div className="flex-1">
                           <p className="font-medium">{entry.description}</p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(entry.createdAt).toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <Badge variant="outline">{entry.category}</Badge>

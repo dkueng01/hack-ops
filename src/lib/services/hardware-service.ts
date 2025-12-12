@@ -15,7 +15,7 @@ export const HardwareService = {
     return data as Hardware[];
   },
 
-  async create(user: CurrentUser, item: Omit<Hardware, "id" | "createdAt">) {
+  async create(user: CurrentUser, item: Omit<Hardware, "id" | "created_at">) {
     const pg = await getApiClient(user);
     const { data, error } = await pg
       .from("hardware")
@@ -27,7 +27,7 @@ export const HardwareService = {
     return data as Hardware;
   },
 
-  async update(user: CurrentUser, id: string, updates: Partial<Omit<Hardware, "id" | "createdAt" | "user_id">>) {
+  async update(user: CurrentUser, id: string, updates: Partial<Omit<Hardware, "id" | "created_at" | "user_id">>) {
     const pg = await getApiClient(user);
 
     const { data, error } = await pg

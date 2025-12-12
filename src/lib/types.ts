@@ -3,13 +3,13 @@ export interface Todo {
   title: string
   completed: boolean
   decisions: Decision[]
-  createdAt: string
+  created_at: string
 }
 
 export interface Decision {
   id: string
   text: string
-  createdAt: string
+  created_at: string
 }
 
 export interface BudgetEntry {
@@ -18,7 +18,7 @@ export interface BudgetEntry {
   description: string
   amount: number
   category: string
-  createdAt: string
+  created_at: string
 }
 
 export interface Hardware {
@@ -27,7 +27,7 @@ export interface Hardware {
   description: string
   quantity: number
   available: number
-  createdAt: string
+  created_at: string
 }
 
 export interface Participant {
@@ -37,7 +37,7 @@ export interface Participant {
   skills: string[]
   checkedIn: boolean
   teamId: string | null
-  createdAt: string
+  created_at: string
 }
 
 export interface Team {
@@ -45,7 +45,7 @@ export interface Team {
   name: string
   description: string
   color: string
-  createdAt: string
+  created_at: string
 }
 
 export interface Reservation {
@@ -54,5 +54,5 @@ export interface Reservation {
   participantId: string
   quantity: number
   status: "pending" | "approved" | "returned"
-  createdAt: string
+  created_at: string
 }

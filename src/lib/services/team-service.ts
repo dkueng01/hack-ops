@@ -25,7 +25,7 @@ export const TeamService = {
     return data as Participant[];
   },
 
-  async createTeam(user: CurrentUser, team: Omit<Team, "id" | "createdAt">) {
+  async createTeam(user: CurrentUser, team: Omit<Team, "id" | "created_at">) {
     const pg = await getApiClient(user);
     const { data, error } = await pg
       .from("teams")

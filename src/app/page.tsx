@@ -51,7 +51,7 @@ export default function HackathonPlanner() {
       skills: Array.isArray(p.skills) ? p.skills : [],
       checkedIn: typeof p.checkedIn === "boolean" ? p.checkedIn : false,
       teamId: (p.teamId as string | null) ?? null,
-      createdAt: (p.createdAt as string) || new Date().toISOString(),
+      created_at: (p.created_at as string) || new Date().toISOString(),
     }))
   }, [])
 

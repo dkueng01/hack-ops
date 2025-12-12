@@ -15,7 +15,7 @@ export const BudgetService = {
     return data as BudgetEntry[];
   },
 
-  async create(user: CurrentUser, entry: Omit<BudgetEntry, "id" | "createdAt">) {
+  async create(user: CurrentUser, entry: Omit<BudgetEntry, "id" | "created_at">) {
     const pg = await getApiClient(user);
     const { data, error } = await pg
       .from("budget_entries")

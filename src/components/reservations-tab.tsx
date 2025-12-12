@@ -42,7 +42,7 @@ export function ReservationsTab({
       participantId: selectedParticipant,
       quantity: qty,
       status: "approved",
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
 
     setReservations((prev) => [...prev, reservation])
@@ -185,7 +185,7 @@ export function ReservationsTab({
           ) : (
             <div className="space-y-2">
               {reservations
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .map((res) => (
                   <div key={res.id} className="flex items-center gap-4 p-3 rounded-lg bg-secondary/30">
                     <div className={`p-2 rounded-lg ${res.status === "returned" ? "bg-muted" : "bg-primary/20"}`}>

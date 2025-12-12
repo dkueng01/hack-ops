@@ -15,7 +15,7 @@ export const ReservationService = {
     return data as Reservation[];
   },
 
-  async create(user: CurrentUser, reservation: Omit<Reservation, "id" | "createdAt">) {
+  async create(user: CurrentUser, reservation: Omit<Reservation, "id" | "created_at">) {
     const pg = await getApiClient(user);
     const { data, error } = await pg
       .from("reservations")
