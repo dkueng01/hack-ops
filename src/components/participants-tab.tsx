@@ -149,8 +149,19 @@ export function ParticipantsTab({ participants, setParticipants, teams, setTeams
     }
   }
 
-  const assignTeam = (participantId: string, teamId: string | null) => {
-    setParticipants((prev) => prev.map((p) => (p.id === participantId ? { ...p, teamId } : p)))
+  const assignTeam = async (participant_id: string, team_id: string | null) => {
+    const oldParticipants = participants
+
+    setParticipants((prev) =>
+      prev.map((p) => (p.id === participant_id ? { ...p, team_id } : p))
+    )
+
+    try {
+      await TeamService.assignTeam(user, participant_id, team_id)
+    } catch (error) {
+      console.error("Failed to assign team:", error)
+      setParticipants(oldParticipants)
+    }
   }
 
   const deleteParticipant = async (id: string) => {

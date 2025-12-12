@@ -82,4 +82,22 @@ export const TeamService = {
     const { error } = await pg.from("participants").delete().eq("id", id)
     if (error) throw error
   },
+
+  async assignTeam(
+    user: CurrentUser,
+    participantId: string,
+    teamId: string | null
+  ) {
+    const pg = await getApiClient(user)
+    const { data, error } = await pg
+      .from("participants")
+      .update({ team_id: teamId })
+      .eq("id", participantId)
+      .eq("user_id", user.id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as Participant
+  }
 };
