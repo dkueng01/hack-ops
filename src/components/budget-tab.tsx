@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { BudgetEntry } from "@/lib/types"
+import { CurrentUser } from "@stackframe/stack"
+import { BudgetService } from "@/lib/services/budget-service"
 
 interface BudgetTabProps {
   budget: BudgetEntry[]
   setBudget: (budget: BudgetEntry[] | ((prev: BudgetEntry[]) => BudgetEntry[])) => void
+  user: CurrentUser
 }
 
 const categories = [
@@ -26,7 +29,7 @@ const categories = [
   "Other",
 ]
 
-export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
+export function BudgetTab({ budget, setBudget, user }: BudgetTabProps) {
   const [type, setType] = useState<"income" | "expense">("expense")
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
@@ -39,24 +42,33 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
     category: "",
   })
 
-  const addEntry = () => {
+  const addEntry = async () => {
     if (!description.trim() || !amount || !category) return
-    const entry: BudgetEntry = {
-      id: crypto.randomUUID(),
-      type,
-      description,
-      amount: Number.parseFloat(amount),
-      category,
-      created_at: new Date().toISOString(),
+    try {
+      const newEntry = await BudgetService.create(user, {
+        type,
+        description,
+        amount: Number.parseFloat(amount),
+        category,
+      })
+      setBudget((prev) => [newEntry, ...prev])
+      setDescription("")
+      setAmount("")
+      setCategory("")
+    } catch (err) {
+      console.error("Failed to add entry:", err)
     }
-    setBudget((prev) => [...prev, entry])
-    setDescription("")
-    setAmount("")
-    setCategory("")
   }
 
-  const deleteEntry = (id: string) => {
+  const deleteEntry = async (id: string) => {
+    const oldBudget = budget
     setBudget((prev) => prev.filter((entry) => entry.id !== id))
+    try {
+      await BudgetService.delete(user, id)
+    } catch (err) {
+      console.error("Failed to delete entry:", err)
+      setBudget(oldBudget)
+    }
   }
 
   const startEdit = (entry: BudgetEntry) => {
@@ -69,22 +81,28 @@ export function BudgetTab({ budget, setBudget }: BudgetTabProps) {
     })
   }
 
-  const saveEdit = (id: string) => {
+  const saveEdit = async (id: string) => {
     if (!editForm.description.trim() || !editForm.amount || !editForm.category) return
+    const updatedData = {
+      type: editForm.type,
+      description: editForm.description,
+      amount: Number.parseFloat(editForm.amount),
+      category: editForm.category,
+    }
+
+    const oldBudget = budget
     setBudget((prev) =>
       prev.map((entry) =>
-        entry.id === id
-          ? {
-            ...entry,
-            type: editForm.type,
-            description: editForm.description,
-            amount: Number.parseFloat(editForm.amount),
-            category: editForm.category,
-          }
-          : entry,
-      ),
+        entry.id === id ? { ...entry, ...updatedData } : entry
+      )
     )
     setEditingId(null)
+    try {
+      await BudgetService.update(user, id, updatedData)
+    } catch (err) {
+      console.error("Failed to update entry:", err)
+      setBudget(oldBudget)
+    }
   }
 
   const cancelEdit = () => {

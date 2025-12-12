@@ -27,6 +27,19 @@ export const BudgetService = {
     return data as BudgetEntry;
   },
 
+  async update(user: CurrentUser, id: string, updates: Partial<BudgetEntry>) {
+    const pg = await getApiClient(user)
+    const { data, error } = await pg
+      .from("budget_entries")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data as BudgetEntry
+  },
+
   async delete(user: CurrentUser, id: string) {
     const pg = await getApiClient(user);
     const { error } = await pg.from("budget_entries").delete().eq("id", id);

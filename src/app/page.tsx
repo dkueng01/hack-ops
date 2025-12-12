@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { stackClientApp } from "@/stack/client"
 import { HardwareService } from "@/lib/services/hardware-service"
 import { TodoService } from "@/lib/services/todo-service"
+import { BudgetService } from "@/lib/services/budget-service"
 
 export default function HackathonPlanner() {
   const user = stackClientApp.useUser({ or: 'redirect' })
@@ -24,19 +25,22 @@ export default function HackathonPlanner() {
 
   const [hardware, setHardware] = useState<Hardware[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
+  const [budget, setBudget] = useState<BudgetEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       if (!user) return;
 
-      const [hardwareData, todoData] = await Promise.all([
+      const [hardwareData, todoData, budgetData] = await Promise.all([
         HardwareService.getAll(user),
-        TodoService.getAll(user)
+        TodoService.getAll(user),
+        BudgetService.getAll(user)
       ]);
 
       setHardware(hardwareData)
       setTodos(todoData)
+      setBudget(budgetData)
       setIsLoading(false);
     }
     loadData();
@@ -55,7 +59,6 @@ export default function HackathonPlanner() {
     }))
   }, [])
 
-  const [budget, setBudget, budgetLoaded] = useLocalStorage<BudgetEntry[]>("hackathon-budget", [])
   const [participants, setParticipants, participantsLoaded] = useLocalStorage<Participant[]>(
     "hackathon-participants",
     [],
@@ -133,7 +136,7 @@ export default function HackathonPlanner() {
           </TabsContent>
 
           <TabsContent value="budget">
-            <BudgetTab budget={budget} setBudget={setBudget} />
+            <BudgetTab budget={budget} setBudget={setBudget} user={user} />
           </TabsContent>
 
           <TabsContent value="participants">
